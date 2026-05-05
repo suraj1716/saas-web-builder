@@ -15,16 +15,29 @@ class MarketplaceController extends Controller
      */
 
      public function index()
-    {
-        // You are using $id but index() doesn't receive it, so either pass $id or list all templates
-        $templates = Template::active()->get(); // get all active templates
-// dd($templates);
- 
-        return Inertia::render('Marketplace/Marketplace', [
-            
-            'templates' => $templates,
-        ]);
-    }
+     {
+         $templates = Template::active()->get();
+     
+         $normalized = $templates->map(function ($tpl) {
+             $data = is_array($tpl->data)
+                 ? $tpl->data
+                 : json_decode($tpl->data ?? '{}', true);
+     
+             return [
+                 'id' => $tpl->id,
+                 'name' => $tpl->name,
+                 'data' => [
+                     'layout' => $data['layout'] ?? [],
+                     'pages' => $data['pages'] ?? [],
+                     'design' => $data['design'] ?? [],
+                 ],
+             ];
+         });
+     
+         return Inertia::render('Marketplace/Marketplace', [
+             'templates' => $normalized,
+         ]);
+     }
    
 
 }

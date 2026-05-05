@@ -12,15 +12,38 @@ class Website extends Model
 
     protected $fillable = [
         'user_id',
-        'name',
         'template_id',
-        'data'
+        'name',
+        'status',
+        'subdomain',
+        'custom_domain',
+        'pages_count',
+        'data',
+        'css',
+        'css_vars',
+        'published_at',
     ];
 
     protected $casts = [
-        'data' => 'array'
+        'data' => 'array',
+        'css_vars' => 'array','published_at' => 'datetime',
     ];
 
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class);
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->status === 'published';
+    }
     public function business()
 {
     return $this->hasOne(WebsiteBusinessDetail::class);

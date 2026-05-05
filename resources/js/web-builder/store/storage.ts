@@ -1,6 +1,7 @@
 // storage.ts
 
-import type { WebsiteInstance } from "../core/types";
+import { WebsiteInstance } from "../types/types";
+
 
 // Save a website template
 export const saveWebsite = (website: WebsiteInstance) => {

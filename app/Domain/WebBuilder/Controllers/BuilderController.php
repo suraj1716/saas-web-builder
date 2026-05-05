@@ -24,29 +24,37 @@ class BuilderController extends Controller
     // Show editor
     public function editor($id, $slug = 'home')
     {
-        // Check if this ID is a real website
         $website = Website::find($id);
     
-        $trial = false;
-    
         if (!$website) {
-            // This is a trial/demo session for a template
             $template = Template::findOrFail($id);
     
             $website = (object)[
-                'id' => 'trial', // temporary ID
+                'id' => 'trial',
                 'template_id' => $template->id,
                 'name' => 'Demo: ' . $template->name,
                 'data' => $template->data,
+                'css' => $template->css ?? '', // ✅
+                
             ];
     
-            $trial = true; // mark this session as trial
+            $trial = true;
+        } else {
+            $trial = false;
         }
     
+        // 🔥 DEBUG
+        Log::info("EDITOR LOAD CSS", [
+            'css' => $website->css,
+        ]);
+    
         return Inertia::render('web-builder/BuilderEditor', [
-            'website' => array_merge($website->data, [
-                'name' => $website->name
-            ]),
+            'website' => [
+                'name' => $website->name,
+                'data' => $website->data,
+                'css' => $website->css ?? '', 
+                'cssVars' => $website->css_vars ?? [], 
+            ],
             'websiteId' => $website->id,
             'templateId' => $website->template_id,
             'slug' => $slug,
@@ -55,48 +63,55 @@ class BuilderController extends Controller
     }
 
   
-    public function save(Request $request, $id)
-    {
-        $website = Website::findOrFail($id);
-    
-        // Finalize media in JSON
-        $data = $this->mediaService->finalizeFromJson($request->data ?? []);
-    
-        // -----------------------------
-        // Handle forms (contact, quote, etc.)
-        // -----------------------------
+  public function save(Request $request, $id)
+{
+    $type = $request->type ?? 'website';
+
+    // -----------------------------
+    // Choose model dynamically
+    // -----------------------------
+    if ($type === 'template') {
+        $model = Template::findOrFail($id);
+    } else {
+        $model = Website::findOrFail($id);
+    }
+
+    // -----------------------------
+    // Finalize media
+    // -----------------------------
+    $data = $this->mediaService->finalizeFromJson($request->data ?? []);
+
+    // -----------------------------
+    // Handle forms ONLY for websites
+    // -----------------------------
+    if ($model instanceof Website) {
         if (!empty($data['pages']) && is_array($data['pages'])) {
             foreach ($data['pages'] as &$page) {
                 if (!empty($page['sections']) && is_array($page['sections'])) {
                     foreach ($page['sections'] as &$section) {
-    
-                        // Only handle "form" type sections
+
                         if (in_array($section['type'], ['contact', 'quote'])) {
-    
-                            if (!empty($section['content']['fields']) && is_array($section['content']['fields'])) {
-    
-                                // Create or find the form for this section
+
+                            if (!empty($section['content']['fields'])) {
+
                                 $form = Form::firstOrCreate(
                                     [
-                                        'website_id' => $website->id,
-                                        'section_id' => $section['id'], // ensure this column exists in DB!
+                                        'website_id' => $model->id,
+                                        'section_id' => $section['id'],
                                     ],
                                     [
                                         'name' => $section['content']['title'] ?? ucfirst($section['type']) . " Form",
                                         'type' => $section['type'],
-                                        ]
+                                    ]
                                 );
-    
-                                // Delete old fields
+
                                 FormField::where('form_id', $form->id)->delete();
-    
-                                // Insert new fields
+
                                 foreach ($section['content']['fields'] as $field) {
                                     FormField::create([
                                         'form_id'    => $form->id,
-                                        'website_id' => $website->id,
+                                        'website_id' => $model->id,
                                         'section_id' => $section['id'],
-    
                                         'name'       => $field['name'] ?? null,
                                         'label'      => $field['label'] ?? null,
                                         'type'       => $field['type'] ?? 'text',
@@ -104,8 +119,7 @@ class BuilderController extends Controller
                                         'required'   => $field['required'] ?? false,
                                     ]);
                                 }
-    
-                                // Store form_id in section content
+
                                 $section['content']['form_id'] = $form->id;
                             }
                         }
@@ -113,17 +127,31 @@ class BuilderController extends Controller
                 }
             }
         }
-    
-        // -----------------------------
-        // Update website JSON
-        // -----------------------------
-        $website->update([
-            'name' => $data['name'] ?? $website->name,
-            'data' => $data,
-        ]);
-    
-        return redirect()->back();
     }
+
+    // -----------------------------
+    // Save model (Website OR Template)
+    // -----------------------------
+    unset($data['css']);
+
+    $model->update([
+        'name' => $data['name'] ?? $model->name,
+        'data' => $data,
+        'css' => $request->css,
+        'css_vars' => $request->cssVars ?? [],
+    ]);
+
+    Log::info('SAVE REQUEST', [
+        'type' => $type,
+        'model_id' => $model->id,
+        'css' => $request->css,
+        'has_data' => isset($request->data),
+    ]);
+
+    $model->refresh();
+
+    return redirect()->back();
+}
 
 
     // Buy template → clone + finalize media
@@ -146,11 +174,10 @@ class BuilderController extends Controller
     public function reset($websiteId)
     {
         $website = Website::findOrFail($websiteId);
-        Log::info("Reset called for Website ID: {$websiteId}", ['website' => $website->toArray()]);
     
-        // Fetch template for this website
+        Log::info("Reset called for Website ID: {$websiteId}");
+    
         $template = Template::find($website->template_id);
-        Log::info("Template fetched for reset", ['template' => $template ? $template->toArray() : null]);
     
         if (!$template) {
             return response()->json([
@@ -158,18 +185,31 @@ class BuilderController extends Controller
             ], 404);
         }
     
-        // Use the 'data' column from template
         if (empty($template->data)) {
             return response()->json([
                 'error' => 'Template data is empty'
             ], 500);
         }
     
-        // Reset website data
-        $website->data = json_decode(json_encode($template->data), true); // convert stdClass to array
-        $website->save();
+        // Normalize safely
+        $templateData = is_array($template->data)
+            ? $template->data
+            : json_decode($template->data, true);
     
-        Log::info("Website reset successfully", ['website_id' => $website->id, 'data' => $website->data]);
+        if (!$templateData) {
+            return response()->json([
+                'error' => 'Invalid template data format'
+            ], 500);
+        }
+    
+        // Optional: backup current state (VERY recommended for builders)
+        $website->update([
+            'data_backup' => $website->data
+        ]);
+    
+        // Reset
+        $website->data = $templateData;
+        $website->save();
     
         return response()->json([
             'message' => 'Website reset to template successfully',

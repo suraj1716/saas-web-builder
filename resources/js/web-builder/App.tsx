@@ -76,13 +76,13 @@ const TemplateEditor = () => {
 
   if (!selectedTemplate) return <p>Loading template...</p>;
 
-  const currentPage = selectedTemplate.pages.find((p) => p.slug === currentPageSlug);
+  const currentPage = selectedTemplate.pages.find((p: { slug: string; }) => p.slug === currentPageSlug);
   if (!currentPage) return <p>Page not found.</p>;
 
   const updateSectionContent = (sectionId: string, newContent: Record<string, any>) => {
-    const updatedPages = selectedTemplate.pages.map((page) => ({
+    const updatedPages = selectedTemplate.pages.map((page: { sections: { id: string; content: any; }[]; }) => ({
       ...page,
-      sections: page.sections.map((section) =>
+      sections: page.sections.map((section: { id: string; content: any; }) =>
         section.id === sectionId
           ? { ...section, content: { ...section.content, ...newContent } }
           : section
@@ -93,7 +93,7 @@ const TemplateEditor = () => {
   };
 
   const reorderSections = (fromIndex: number, toIndex: number) => {
-    const updatedPages = selectedTemplate.pages.map((page) => {
+    const updatedPages = selectedTemplate.pages.map((page: { slug: string; sections: any; }) => {
       if (page.slug !== currentPageSlug) return page;
       const sections = [...page.sections];
       const [moved] = sections.splice(fromIndex, 1);
@@ -136,7 +136,7 @@ const TemplateEditor = () => {
 
       {/* Page Selector */}
       <div style={{ padding: 10 }}>
-        {selectedTemplate.pages.map((page) => (
+        {selectedTemplate.pages.map((page: { id: React.Key | null | undefined; slug: React.SetStateAction<string>; name: string | number | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | null | undefined; }) => (
           <button
             key={page.id}
             onClick={() => setCurrentPageSlug(page.slug)}

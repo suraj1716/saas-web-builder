@@ -12,18 +12,37 @@ class Template extends Model
         'slug',
         'description',
         'preview_image',
-        'category', // maybe a free-form tag
-        'tier',     // basic / pro
-        'business_category', // new column
-        'css',
+        'category',
+        'business_category',
+        'tier',
+        'one_time_price',
         'data',
-        'is_active'
+        'css',
+        'css_vars',
+        'is_active',
     ];
 
     protected $casts = [
-        'data' => 'array',
-        'is_active' => 'boolean'
+        'data'           => 'array',
+        'css_vars'       => 'array',
+        'is_active'      => 'boolean',
+        'one_time_price' => 'decimal:2',
     ];
+
+    public function isPremium(): bool
+    {
+        return $this->tier === 'premium';
+    }
+
+    public function isFree(): bool
+    {
+        return $this->tier === 'free' || $this->tier === 'basic';
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(TemplatePurchase::class);
+    }
 
     public function websites()
     {

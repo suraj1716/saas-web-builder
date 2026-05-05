@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Cashier\Billable;
+use App\Models\UserUsage;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Domain\Websites\Models\Website;
+use App\Domain\Billing\Models\Subscription;
+use App\Models\SavedTemplate;
+use App\Models\TemplatePurchase;
+use App\Domain\Media\Models\Media;
+use App\Domain\Billing\Models\Plan;
+
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -21,6 +31,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'is_admin',
     ];
 
     /**
@@ -42,9 +53,29 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'is_admin'          => 'boolean',
+            'password'          => 'hashed',
         ];
     }
+
+      // Auto-create usage row when user is created
+      protected static function booted(): void
+      {
+          static::created(function (User $user) {
+              UserUsage::create([
+                  'user_id'            => $user->id,
+                  'storage_bytes_used' => 0,
+                  'websites_count'     => 0,
+                  'template_slots_used'=> 0,
+              ]);
+          });
+      }
+
+      public function usage(): HasOne
+      {
+          return $this->hasOne(UserUsage::class);
+      }
+
     public function canAccessProTemplates(): bool
 {
     return $this->subscribed('default', 'pro'); // assuming 'pro' plan in Stripe
@@ -61,5 +92,51 @@ class User extends Authenticatable
   {
       return $this->subscription?->plan;
   }
+
+
+  public function websites(): HasMany
+  {
+      return $this->hasMany(Website::class);
+  }
+
+  public function savedTemplates(): HasMany
+  {
+      return $this->hasMany(SavedTemplate::class);
+  }
+
+  public function templatePurchases(): HasMany
+  {
+      return $this->hasMany(TemplatePurchase::class);
+  }
+
+  public function media(): HasMany
+  {
+      return $this->hasMany(Media::class);
+  }
+
+  // ── Plan helpers ───────────────────────────────
+
+  // Get the user's active plan from subscriptions
+  public function activePlan(): ?Plan
+  {
+      $subscription = $this->subscription('default');
+
+      if (! $subscription || ! $subscription->active()) {
+          return Plan::where('slug', 'free')->first();
+      }
+
+      return Plan::where('stripe_price_id', $subscription->stripe_price)->first()
+          ?? Plan::where('slug', 'free')->first();
+  }
+
+  // Has the user purchased a specific template one-time?
+  public function hasPurchasedTemplate(int $templateId): bool
+  {
+      return $this->templatePurchases()
+          ->where('template_id', $templateId)
+          ->where('status', 'paid')
+          ->exists();
+  }
+
 
 }

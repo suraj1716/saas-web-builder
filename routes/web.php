@@ -14,6 +14,7 @@ use Laravel\Cashier\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Domain\Templates\Models\Template;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,12 +64,12 @@ Route::middleware('auth')->group(function () {
 
 /* TEMPLATE DEMO EDITOR */
 Route::get('/templates/{id}', [TemplateController::class, 'show'])->name('templates.show');
-
+Route::get('/api/templates/{id}', [TemplateController::class, 'apiShow']);
 Route::get('/template/{id}/editor/{slug?}', [TemplateController::class, 'trialEditor'])
     ->where('slug', '.*');
-    Route::post('/templates/{id}/purchase', [TemplateController::class, 'purchase'])->name('templates.purchase');
-
-    Route::get('/template/{id}/{slug}', [TemplateController::class, 'page'])
+Route::post('/templates/{id}/purchase', [TemplateController::class, 'purchase'])->name('templates.purchase');
+  
+Route::get('/template/{id}/{slug}', [TemplateController::class, 'page'])
     ->where('slug', '.*');
 
 
@@ -83,11 +84,11 @@ Route::get('/marketplace', [MarketplaceController::class, 'index'])->name('marke
 
 
 /* BUILDER */
-Route::get('/builder/{id}/{slug?}', [BuilderController::class, 'editor'])
-    ->where('slug', '.*');
+
 Route::post('/builder/{id}/save', [BuilderController::class, 'save']);
 Route::post('/builder/{website}/reset', [BuilderController::class, 'reset'])->name('builder.reset');
-
+Route::get('/builder/{id}/{slug?}', [BuilderController::class, 'editor'])
+    ->where('slug', '.*');
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/media/upload', [MediaController::class, 'upload']);
@@ -108,6 +109,8 @@ Route::post('/forms/submit/{websiteId}/{sectionId}', [FormSubmissionController::
 Route::post('/stripe/webhook', [WebhookController::class, 'handleWebhook']);
 
 
+Route::post('/admin/create-template', [TemplateController::class, 'createReactTemplate'])
+    ->name('admin.create-template');
 
 require __DIR__.'/platform.php';
 

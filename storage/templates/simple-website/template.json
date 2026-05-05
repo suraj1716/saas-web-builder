@@ -1,0 +1,81 @@
+{
+    "cssClass": "simple-template-1",
+    "design": {
+        "primaryColor": "#1106ea",
+        "backgroundColor": "#e30d0d",
+        "textColor": "#1f2937",
+        "mutedColor": "#6b7280",
+        "borderColor": "#e5e7eb",
+        "radius": "8px",
+        "sectionPadding": "80px",
+        "containerWidth": "1100px",
+        "fontHeading": "Inter, sans-serif",
+        "fontBody": "Inter, sans-serif",
+        "textH1": "48px",
+        "textH2": "32px",
+        "textH3": "20px",
+        "textBody": "16px"
+    },
+    "layout": {
+        "navbar": {
+            "id": "navbar-1",
+            "type": "navbar",
+            "content": {
+                "title": "My Simple Site"
+            },
+            "draggable": false
+        },
+        "footer": {
+            "id": "footer-1",
+            "type": "footer",
+            "content": {
+                "copyright": "\u00a9 2026"
+            },
+            "draggable": false
+        }
+    },
+    "pages": [
+        {
+            "pageId": "home",
+            "title": "Home",
+            "slug": "home",
+            "sections": [
+                {
+                    "id": "hero-1",
+                    "type": "hero",
+                    "content": {
+                        "heading": "Welcome to Simple Website"
+                    },
+                    "draggable": true
+                },
+                {
+                    "id": "about-1",
+                    "type": "about",
+                    "content": {
+                        "heading": "About Our Company",
+                        "subheading": "Who we are & what we do",
+                        "text": "We are a team of passionate developers and designers dedicated to building modern websites. Our goal is to deliver exceptional user experiences through clean design and innovative solutions.",
+                        "imageUrl": "https:\/\/via.placeholder.com\/500x400"
+                    },
+                    "draggable": true
+                }
+            ]
+        },
+        {
+            "pageId": "contact",
+            "title": "Contact",
+            "slug": "contact",
+            "sections": [
+                {
+                    "id": "contact-1",
+                    "type": "contact",
+                    "content": {
+                        "email": "info@simple.com"
+                    },
+                    "draggable": true
+                }
+            ]
+        }
+    ],
+    "name": "Simple Website"
+}
